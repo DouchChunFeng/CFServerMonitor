@@ -11,7 +11,8 @@ namespace cfmanager
     class socket
     {
         private static socket s;
-        private socket() { }
+        private Socket socks;
+        private socket() { reset_socket(); }
         public static socket Get
         {
             get { return s = s ?? new socket(); }
@@ -34,15 +35,18 @@ namespace cfmanager
             catch { }
             return "127.0.0.1";
         }
+        private void reset_socket()
+        {
+            if (socks != null) socks.Close();
+            socks = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socks.ReceiveTimeout = 50;
+        }
 
         public string[] a2sinfo(string ip, int port)
         {
             List<byte> bytelist = new List<byte>();
             bytelist.AddRange(new byte[] { 0xff, 0xff, 0xff, 0xff });
             bytelist.AddRange(Encoding.UTF8.GetBytes("TSource Engine Query\0"));
-
-            Socket socks = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            socks.ReceiveTimeout = 50;
 
             IPEndPoint ipport = new IPEndPoint(IPAddress.Parse(ip), port);
 
@@ -58,7 +62,7 @@ namespace cfmanager
             }
             catch (Exception e)
             {
-                socks.Close();
+                reset_socket();
                 return new string[] { "ERROR", e.Message };
             }
 
@@ -75,12 +79,11 @@ namespace cfmanager
                 }
                 catch (Exception e)
                 {
-                    socks.Close();
+                    reset_socket();
                     return new string[] { "ERROR", e.Message };
                 }
             }
 
-            socks.Close();
             MemoryStream ms = new MemoryStream();
             ms.Write(srvback, 0, srvbacklen);
             byte[] succdata = ms.ToArray();
